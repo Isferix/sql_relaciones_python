@@ -31,7 +31,7 @@ db = config('db', config_path_name)
 dataset = config('dataset', config_path_name)
 
 # Obtener el path real del archivo de schema
-schema_path_name = os.path.join(script_path, db['schema'])
+schema_path_name = os.path.join(script_path, db['schema1'])
 
 
 def create_schema():
@@ -55,7 +55,7 @@ def create_schema():
     conn.close()
 
 
-def insert_nacionalidad( name):
+def insert_nacionalidad(name):
     conn = sqlite3.connect(db['database'])
     conn.execute("PRAGMA foreign_keys = 1")
     c = conn.cursor()
@@ -111,6 +111,7 @@ def insert_persona_grupo(group):
 
 def fill(chunksize=2):
     # Insertar el archivo CSV de nacionalidades
+    print('Dataset:', dataset)
     with open(dataset['nationality']) as fi:
         reader = csv.DictReader(fi)
         chunk = []
@@ -132,7 +133,6 @@ def fill(chunksize=2):
         
         if chunk:
             insert_persona_grupo(chunk)
-
 
 
 def show():
@@ -231,13 +231,13 @@ if __name__ == '__main__':
 
     count_persona('Argentina')
 
-    # update_persona_nationality('Max', 'Holanda')
-    # show()
+    update_persona_nationality('Max', 'Holanda')
+    show()
 
-    # group = [('Max', 40, 'Estados Unidos'),
-    #          ('SQL', 13, 'Inglaterra'),
-    #          ('SQLite', 20, 'Estados Unidos'),
-    #          ]
+    group = [('Max', 40, 'Estados Unidos'),
+             ('SQL', 13, 'Inglaterra'),
+             ('SQLite', 20, 'Estados Unidos'),
+             ]
 
-    # insert_persona_grupo(group)
-    # show()
+    insert_persona_grupo(group)
+    show()

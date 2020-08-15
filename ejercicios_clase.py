@@ -15,56 +15,35 @@ __author__ = "Inove Coding School"
 __email__ = "alumnos@inove.com.ar"
 __version__ = "1.1"
 
-import sqlite3
+import os
+import csv
+
+from config import config
+from mySqlModule import consulta
 
 # https://extendsclass.com/sqlite-browser.html
 
+#Declaraciones de Path
+script_path = os.path.dirname(os.path.realpath(__file__))
+
+config_path_name = os.path.join(script_path, 'config.ini')
+db = config('db', config_path_name)
+dataset = config('dataset', config_path_name)
+schema_path_name = os.path.join(script_path, db['schema2'])
+
+#Declaracion del directorio y archivo de trabajo
+consulta.directory = script_path = os.path.dirname(os.path.realpath(__file__))
+consulta.file = db['database_secundaria']
+
+#Declaracion de PRAGMAS
+consulta.unique("""PRAGMA foreign_keys = 1""")
+
+
 
 def create_schema():
+    consulta.script(schema_path_name)
 
-    # Conectarnos a la base de datos
-    # En caso de que no exista el archivo se genera
-    # como una base de datos vacia
-    conn = sqlite3.connect('secundaria.db')
-
-    # Crear el cursor para poder ejecutar las querys
-    c = conn.cursor()
-
-    # Ejecutar una query
-    c.execute("""
-                DROP TABLE IF EXISTS estudiante;
-            """)
-
-    c.execute("""
-            DROP TABLE IF EXISTS tutor;
-        """)
-
-    # Ejecutar una query
-    c.execute("""
-        CREATE TABLE tutor(
-            [id] INTEGER PRIMARY KEY AUTOINCREMENT,
-            [name] TEXT NOT NULL
-        );
-        """)
-
-    c.execute("""
-            CREATE TABLE estudiante(
-                [id] INTEGER PRIMARY KEY AUTOINCREMENT,
-                [name] TEXT NOT NULL,
-                [age] INTEGER NOT NULL,
-                [grade] INTEGER NOT NULL,
-                [fk_tutor_id] INTEGER NOT NULL REFERENCES tutor(id)
-            );
-            """)
-
-    # Para salvar los cambios realizados en la DB debemos
-    # ejecutar el commit, NO olvidarse de este paso!
-    conn.commit()
-
-    # Cerrar la conexión con la base de datos
-    conn.close()
-
-
+    
 def fill():
     print('Completemos esta tablita!')
     # Llenar la tabla de la secundaria con al munos 2 tutores
@@ -90,6 +69,29 @@ def fill():
     # primero insertado el tutor.
     # No olvidar activar las foreign_keys!
 
+    # columnas que deben aparecer en el print:
+    # id / name / age / grade / tutor_nombre
+
+    tutores = [('Celeste',),
+            ('Federico',)]
+
+    consulta.multiple("""
+    INSERT INTO tutor(name)
+    VALUES(?);""", tutores)
+
+
+    estudiantes = [('Franco', '15', '4', 'Celeste'),
+                ('Damian', '16', '5', 'Federico'),
+                ('Cecilia', '15', '5', 'Federico'),
+                ('Fatima', '14', '3', 'Celeste'),
+                ('Thiago', '15', '5', 'Federico')]
+
+    consulta.multiple("""
+    INSERT INTO estudiante(name, age, grade, fk_tutor_id)
+    SELECT ?, ?, ?, t.id
+    FROM tutor as t WHERE t.name = ?;
+    """, estudiantes)
+    
 
 def fetch():
     print('Comprovemos su contenido, ¿qué hay en la tabla?')
@@ -99,9 +101,16 @@ def fetch():
     # del tutor en la query, utilizando el concepto de INNER JOIN,
     # se puede usar el WHERE en vez del INNER JOIN.
     # Utilizar fetchone para imprimir de una fila a la vez
-
-    # columnas que deben aparecer en el print:
-    # id / name / age / grade / tutor_nombre
+    consulta.unique("""
+        SELECT e.id, e.name, e.age, t.name
+        FROM estudiante AS e
+        INNER JOIN tutor AS t ON e.fk_tutor_id = t.id;""", 
+"""
+while True: 
+    row = c.fetchone()
+    if row is None:
+        break
+    print(row)""", script=True)
 
 
 def search_by_tutor(tutor):
@@ -113,6 +122,11 @@ def search_by_tutor(tutor):
     # De la lista de esos estudiantes el SELECT solo debe traer
     # las siguientes columnas por fila encontrada:
     # id / name / age / tutor_nombre
+    consulta.unique("""
+    SELECT e.id, e.name, e.age, t.name 
+    FROM estudiante AS e
+    INNER JOIN tutor AS t ON e.fk_tutor_id = t.id
+    WHERE t.name = '{}';""".format(tutor), '[print(row) for row in query]')
 
 
 def modify(id, name):
@@ -121,6 +135,10 @@ def modify(id, name):
     # cuyo id sea el "id" pasado como parámetro,
     # modificar el tutor asignado (fk_tutor_id --> id) por aquel que coincida
     # con el nombre del tutor pasado como parámetro
+    consulta.unique("""
+    UPDATE estudiante
+    SET fk_tutor_id = (SELECT t.id FROM tutor as t WHERE t.name = '{}')
+    WHERE id = {};""".format(name, id))
 
 
 def count_grade(grade):
@@ -128,20 +146,24 @@ def count_grade(grade):
     # Utilizar la sentencia COUNT para contar cuantos estudiante
     # se encuentran cursando el grado "grade" pasado como parámetro
     # Imprimir en pantalla el resultado
+    resultado = consulta.unique("""SELECT COUNT(e.grade) FROM estudiante AS e
+    WHERE e.grade = {}""".format(grade), '[row for row in query]')
+    print(resultado[0][0])
+    
 
 
 if __name__ == '__main__':
     print("Bienvenidos a otra clase de Inove con Python")
     create_schema()   # create and reset database (DB)
-    # fill()
-    # fetch()
+    fill()
+    fetch()
 
-    tutor = 'nombre_tutor'
-    # search_by_tutor(tutor)
+    tutor = 'Federico'
+    search_by_tutor(tutor)
 
-    nuevo_tutor = 'nombre_tutor'
+    nuevo_tutor = 'Celeste'
     id = 2
-    # modify(id, nuevo_tutor)
+    modify(id, nuevo_tutor)
 
-    grade = 2
-    # count_grade(grade)
+    grade = 5
+    count_grade(grade)
